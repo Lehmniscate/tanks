@@ -16,7 +16,7 @@ In addition, this project will include:
 ## Wireframes
 This app consists of a single canvas element with the game level tanks and controls. The level is a two dimensional crossection of ground with tanks resting on top of it.
 
-![wireframes](images/tanks,jpg)
+![wireframes](images/tanks.svg)
 
 ## Architecture and Technologies
 This project will be implemented with the following technologies:
