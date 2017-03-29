@@ -15,6 +15,7 @@ export default class World {
 
     document.onkeydown = this.keyChange(true);
     document.onkeyup = this.keyChange(false);
+    document.onmouseup = this.mouse_up.bind(this);
 
     this.leftKey = false;
     this.rightKey = false;
@@ -30,7 +31,7 @@ export default class World {
 
   loop() {
     this.move_character();
-    requestAnimationFrame(this.loop.bind(this));
+    setTimeout(() => this.loop(), 1000/100);
   }
 
   move_character() {
@@ -50,6 +51,17 @@ export default class World {
       while (this.level.collision(this.tank.hitbox(0, 20, 10, 1))) {
         this.tank.y -= 1;
       }
+    }
+    this.tank.speed++;
+    if (this.tank.speed > 0) {
+        //check ground
+        for (let i = 0; i < this.tank.speed; i++) {
+            if (!this.level.collision(this.tank.hitbox(0, 20, 10, 1))) {
+                this.tank.y += 1;
+            } else {
+                this.tank.speed = 0;
+            }
+        }
     }
     this.drawTank();
   }
@@ -96,4 +108,20 @@ export default class World {
       if(key === 32) this.spaceKey = down;
     }
   }
+
+  mouse_up() {
+      var x = event.offsetX,
+          y = event.offsetY;
+
+      this.canvases.terrain.globalCompositeOperation = "destination-out";
+      this.canvases.terrain.beginPath();
+      this.canvases.terrain.arc(x, y, 30, 0, Math.PI * 2, true);
+      this.canvases.terrain.fill();
+
+      //update
+      var newCanvasData = this.canvases.terrain.getImageData(this.level.terrain_bitmap.x, this.level.terrain_bitmap.y, this.level.terrain_bitmap.width, this.level.terrain_bitmap.height);
+      this.level.terrain_bitmap.imageData = newCanvasData;
+      this.canvases.terrain.putImageData(newCanvasData, this.level.terrain_bitmap.x, this.level.terrain_bitmap.y);
+      this.draw_objects();
+  };
 }

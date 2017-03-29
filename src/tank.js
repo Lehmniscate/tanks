@@ -8,6 +8,7 @@ export default class Tank {
     this.y = y;
     this.w = 30;
     this.h = 20;
+    this.speed = 0;
   }
 
   hitbox(xOffset, yOffset, w, h) {

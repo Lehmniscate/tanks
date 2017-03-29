@@ -8,7 +8,7 @@ export default class Bitmap {
   }
 
   collision(hitbox, color) {
-    color = color || "RGBA(0,255,0,255)";
+    color = color || "RGBA(50,175,50,255)";
     for(let i = 0; i < hitbox.grid.length; i++) {
       let x = hitbox.grid[i][0];
       let y = hitbox.grid[i][1];
@@ -27,7 +27,7 @@ export default class Bitmap {
         for(let i = 0; i < 4; i++) {
           this.imageData.data[idx + i] = colors[i];
         }
-        
+
       }
     }
   }
@@ -42,7 +42,6 @@ export default class Bitmap {
 
     let r = (y * image.width + x) * 4;
 
-    return
-      `RGBA(${image.data[r]},${image.data[r+1]},${image.data[r+2]},${image.data[r+3]})`;
+    return `RGBA(${image.data[r]},${image.data[r+1]},${image.data[r+2]},${image.data[r+3]})`;
   }
 }
