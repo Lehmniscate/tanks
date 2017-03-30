@@ -10,8 +10,8 @@ export default class Bitmap {
   collision(hitbox, color) {
     color = color || "RGBA(50,175,50,255)";
     for(let i = 0; i < hitbox.grid.length; i++) {
-      let x = hitbox.grid[i][0];
-      let y = hitbox.grid[i][1];
+      let x = Math.floor(hitbox.grid[i][0]);
+      let y = Math.floor(hitbox.grid[i][1]);
       let pixel = this.getPixel(x, y);
 
       if(pixel === color) return true;
