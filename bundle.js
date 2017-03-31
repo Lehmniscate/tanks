@@ -97,8 +97,8 @@ var Bitmap = function () {
     value: function collision(hitbox, color) {
       color = color || "RGBA(50,175,50,255)";
       for (var i = 0; i < hitbox.grid.length; i++) {
-        var x = hitbox.grid[i][0];
-        var y = hitbox.grid[i][1];
+        var x = Math.floor(hitbox.grid[i][0]);
+        var y = Math.floor(hitbox.grid[i][1]);
         var pixel = this.getPixel(x, y);
 
         if (pixel === color) return true;
@@ -179,24 +179,28 @@ var World = function () {
     this.width = canvas.width;
     this.height = canvas.height;
     this.canvases = {};
-    this.level = new _level2.default(this.ctx, this.width, this.height);
-    this.level.terrain_bitmap.y = this.height - this.level.terrain_bitmap.height;
+    this.firing = false;
 
-    this.tank = new _tank2.default(20, 20);
+    this.level = new _level2.default(this.width, this.height);
+
+    this.numTanks = 4;
+    this.tankColors = ["rgba(40,100,100,255)", "rgba(150,0,0,255)", "rgba(0,0,150,255)", "rgba(150,150,0,255)"];
+    this.tanks = {};
+    var spacing = this.width / this.numTanks;
+    for (var i = 0; i < this.numTanks; i++) {
+      this.tanks[i] = new _tank2.default(i * spacing + spacing / 2 - 30, 0, this.tankColors[i], canvas);
+    }
+    this.tank = 0;
 
     document.onkeydown = this.keyChange(true);
     document.onkeyup = this.keyChange(false);
-    document.onmouseup = this.mouse_up.bind(this);
-
     this.leftKey = false;
     this.rightKey = false;
     this.spaceKey = false;
     this.aimLeft = false;
     this.aimRight = false;
 
-    this.add_child("terrain", this.level.terrain_bitmap);
-    this.draw_objects();
-
+    this.paint();
     this.loop();
   }
 
@@ -205,78 +209,119 @@ var World = function () {
     value: function loop() {
       var _this = this;
 
-      this.move_character();
-      setTimeout(function () {
+      this.move();
+      requestAnimationFrame(function () {
         return _this.loop();
-      }, 1000 / 100);
+      });
     }
   }, {
-    key: 'move_character',
-    value: function move_character() {
-      if (this.leftKey) {
-        if (!this.level.collision(this.tank.hitbox(0, 0, 1, 1))) {
-          this.tank.x -= 1;
+    key: 'nextTurn',
+    value: function nextTurn() {
+      this.tank = (this.tank + 1) % this.numTanks;
+      if (this.tanks[this.tank].health <= 0) this.nextTurn();
+    }
+  }, {
+    key: 'fireBullet',
+    value: function fireBullet() {
+      var v = 7;
+      this.bullet = {
+        vx: v * Math.cos(this.tanks[this.tank].angle * Math.PI / 180),
+        vy: -v * Math.sin(this.tanks[this.tank].angle * Math.PI / 180),
+        x: this.tanks[this.tank].x + this.tanks[this.tank].w / 2,
+        y: this.tanks[this.tank].y,
+        radius: 40
+      };
+      this.firing = true;
+    }
+  }, {
+    key: 'bulletPhysics',
+    value: function bulletPhysics() {
+      this.bullet.vy += 0.1;
+
+      var steps = Math.ceil(Math.pow(this.bullet.vy, 2) + Math.pow(this.bullet.vx, 2));
+
+      for (var i = 0; i < steps; i += 1) {
+        this.bullet.x += this.bullet.vx / steps;
+        this.bullet.y += this.bullet.vy / steps;
+
+        var grid = [[this.bullet.x, this.bullet.y]];
+
+        if (this.level.collision({ grid: grid })) {
+          this.level.explosion(this.bullet.x, this.bullet.y, this.bullet.radius);
+          for (var _i = 0; _i < this.numTanks; _i++) {
+            this.tanks[_i].explosion(this.bullet.x, this.bullet.y, this.bullet.radius);
+          }
+          this.firing = false;
+          this.nextTurn();
+          break;
+        } else if (this.outOfBounds(this.bullet.x, this.bullet.y)) {
+          this.firing = false;
+          this.nextTurn();
+          break;
         }
-        while (this.level.collision(this.tank.hitbox(0, 20, 10, 1))) {
-          this.tank.y -= 1;
+      }
+    }
+  }, {
+    key: 'outOfBounds',
+    value: function outOfBounds(x, y) {
+      return x < 0 || x > this.width || y < 0 || y > this.height;
+    }
+  }, {
+    key: 'move',
+    value: function move() {
+      if (this.spaceKey || this.firing) {
+        if (!this.firing) {
+          this.fireBullet();
+        } else {
+          this.bulletPhysics();
         }
+      } else {
+        if (this.aimLeft) this.tanks[this.tank].aim("left");
+        if (this.aimRight) this.tanks[this.tank].aim("right");
+        if (this.leftKey) this.tanks[this.tank].move("left")(this.level);
+        if (this.rightKey) this.tanks[this.tank].move("right")(this.level);
       }
 
-      if (this.rightKey) {
-        if (!this.level.collision(this.tank.hitbox(10, 0, 1, 1))) {
-          this.tank.x += 1;
-        }
-        while (this.level.collision(this.tank.hitbox(0, 20, 10, 1))) {
-          this.tank.y -= 1;
-        }
-      }
-      this.tank.speed++;
-      if (this.tank.speed > 0) {
-        //check ground
-        for (var i = 0; i < this.tank.speed; i++) {
-          if (!this.level.collision(this.tank.hitbox(0, 20, 10, 1))) {
-            this.tank.y += 1;
-          } else {
-            this.tank.speed = 0;
+      for (var t = 0; t < this.numTanks; t++) {
+        this.tanks[t].speed++;
+        if (this.tanks[t].speed > 0) {
+          for (var i = 0; i < this.tanks[t].speed; i++) {
+            if (!this.level.collision(this.tanks[t].hitbox(0, 10, 30, 1))) {
+              this.tanks[t].y += 1;
+            } else {
+              this.tanks[t].speed = 0;
+            }
           }
         }
       }
-      this.drawTank();
+      this.paint();
     }
   }, {
-    key: 'add_child',
-    value: function add_child(name, bitmap) {
-      //stores the canvases in temporary obj to manipulate later
-      var buffer = document.createElement('canvas');
-      buffer.height = this.height;
-      buffer.width = this.width;
-
-      var ctx = buffer.getContext("2d");
-      ctx.putImageData(bitmap.imageData, bitmap.x, bitmap.y);
-
-      this.canvases[name] = ctx;
-    }
-  }, {
-    key: 'drawTank',
-    value: function drawTank() {
-      var buffer = document.createElement('canvas');
-      buffer.height = this.height;
-      buffer.width = this.width;
-
-      var ctx = buffer.getContext("2d");
-      this.tank.draw(ctx);
-      this.canvases["tank"] = ctx;
-
-      this.draw_objects();
-    }
-  }, {
-    key: 'draw_objects',
-    value: function draw_objects() {
+    key: 'paint',
+    value: function paint() {
+      // Clear screen
       this.ctx.clearRect(0, 0, this.width, this.height);
-      for (var key in this.canvases) {
-        var obj = this.canvases[key];
-        if (obj) this.ctx.drawImage(obj.canvas, 0, 0);
+
+      // Paint terrain
+      this.level.draw(this.ctx);
+
+      // Paint bullet
+      if (this.firing) {
+        this.ctx.beginPath();
+        this.ctx.arc(this.bullet.x, this.bullet.y, 3, 0, 2 * Math.PI, false);
+        this.ctx.fillStyle = "rgba(0,0,0,255)";
+        this.ctx.fill();
+        this.ctx.closePath();
       }
+
+      // Paint tanks
+      for (var i = 0; i < this.numTanks; i++) {
+        this.tanks[i].draw(this.ctx);
+        // Paint healthbars
+        this.tanks[i].drawHealth(this.ctx, i);
+      }
+
+      this.tanks[this.tank].drawTurnSymbol(this.ctx, this.tank);
     }
   }, {
     key: 'keyChange',
@@ -291,23 +336,6 @@ var World = function () {
         if (key === 68) _this2.aimRight = down;
         if (key === 32) _this2.spaceKey = down;
       };
-    }
-  }, {
-    key: 'mouse_up',
-    value: function mouse_up() {
-      var x = event.offsetX,
-          y = event.offsetY;
-
-      this.canvases.terrain.globalCompositeOperation = "destination-out";
-      this.canvases.terrain.beginPath();
-      this.canvases.terrain.arc(x, y, 30, 0, Math.PI * 2, true);
-      this.canvases.terrain.fill();
-
-      //update
-      var newCanvasData = this.canvases.terrain.getImageData(this.level.terrain_bitmap.x, this.level.terrain_bitmap.y, this.level.terrain_bitmap.width, this.level.terrain_bitmap.height);
-      this.level.terrain_bitmap.imageData = newCanvasData;
-      this.canvases.terrain.putImageData(newCanvasData, this.level.terrain_bitmap.x, this.level.terrain_bitmap.y);
-      this.draw_objects();
     }
   }]);
 
@@ -338,21 +366,48 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var Level = function () {
-  function Level(ctx, width, height) {
+  function Level(width, height) {
     _classCallCheck(this, Level);
 
-    this.ctx = ctx;
     this.width = width;
     this.height = height;
 
+    var buffer = document.createElement('canvas');
+    buffer.height = this.height;
+    buffer.width = this.width;
+    this.ctx = buffer.getContext("2d");
+
     this.terrain_bitmap = new _bitmap2.default(this.ctx.createImageData(this.width, this.height / 2));
     this.terrain_bitmap.fillColor(50, 175, 50, 255);
+    this.terrain_bitmap.y = this.height - this.terrain_bitmap.height;
+
+    this.ctx.putImageData(this.terrain_bitmap.imageData, this.terrain_bitmap.x, this.terrain_bitmap.y);
   }
 
   _createClass(Level, [{
+    key: 'draw',
+    value: function draw(context) {
+      context.drawImage(this.ctx.canvas, 0, 0);
+    }
+  }, {
     key: 'collision',
     value: function collision(hitbox) {
       return this.terrain_bitmap.collision(hitbox);
+    }
+  }, {
+    key: 'explosion',
+    value: function explosion(x, y, r) {
+      this.ctx.globalCompositeOperation = "destination-out";
+      this.ctx.beginPath();
+      this.ctx.arc(x, y, r, 0, Math.PI * 2, true);
+      this.ctx.fillStyle = "rgba(255, 255, 255, 255)";
+      this.ctx.fill();
+      this.ctx.closePath();
+
+      //update
+      var newCanvasData = this.ctx.getImageData(this.terrain_bitmap.x, this.terrain_bitmap.y, this.terrain_bitmap.width, this.terrain_bitmap.height);
+      this.terrain_bitmap.imageData = newCanvasData;
+      this.ctx.putImageData(newCanvasData, this.terrain_bitmap.x, this.terrain_bitmap.y);
     }
   }]);
 
@@ -377,20 +432,80 @@ var _createClass = function () { function defineProperties(target, props) { for 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var Tank = function () {
-  function Tank(x, y, color) {
+  function Tank(x, y, color, canvas) {
     _classCallCheck(this, Tank);
 
     this.cannonAngle = 0;
     this.angle = 0;
-    this.color = color || "rgb(50,100,150)";
+    this.color = color || "rgba(50,100,150,255)";
     this.x = x;
     this.y = y;
     this.w = 30;
-    this.h = 20;
+    this.h = 10;
     this.speed = 0;
+    this.maxHealth = 100;
+    this.health = this.maxHealth;
+
+    this.maxPower = 10;
+    this.power = 7;
+
+    this.maxFuel = 100;
+    this.fuel = this.maxFuel;
+
+    var buffer = document.createElement('canvas');
+    buffer.height = canvas.height;
+    buffer.width = canvas.width;
+    var ctx = buffer.getContext("2d");
+    this.context = ctx;
   }
 
   _createClass(Tank, [{
+    key: "aim",
+    value: function aim(direction) {
+      if (direction === "left") {
+        if (this.angle < 180) this.angle += 0.5;
+      } else {
+        if (this.angle > 0) this.angle -= 0.5;
+      }
+    }
+  }, {
+    key: "fire",
+    value: function fire() {
+      var v = this.power || 7;
+      return {
+        vx: v * Math.cos(this.angle * Math.PI / 180),
+        vy: -v * Math.sin(this.angle * Math.PI / 180),
+        x: this.x + this.w / 2,
+        y: this.y
+      };
+      this.fuel = this.maxFuel;
+    }
+  }, {
+    key: "move",
+    value: function move(direction) {
+      var _this = this;
+
+      var x = void 0;
+      if (direction === "left") {
+        direction = -1;
+        x = 0;
+      } else {
+        direction = 1;
+        x = this.w;
+      }
+
+      return function (level) {
+        if (_this.fuel <= 0) return;
+        if (!level.collision(_this.hitbox(x, 0, 1, 1))) {
+          _this.x += direction;
+          _this.fuel -= 1.5;
+        }
+        while (level.collision(_this.hitbox(0, _this.h, _this.w, 1))) {
+          _this.y -= 1;
+        }
+      };
+    }
+  }, {
     key: "hitbox",
     value: function hitbox(xOffset, yOffset, w, h) {
       var x = this.x + xOffset;
@@ -404,10 +519,78 @@ var Tank = function () {
       return { grid: grid };
     }
   }, {
+    key: "explosion",
+    value: function explosion(x, y, radius) {
+      if (this.health <= 0) return;
+      var distance = Math.min(this.distance(x, y, this.x, this.y), this.distance(x, y, this.x + this.w, this.y), this.distance(x, y, this.x, this.y + this.h), this.distance(x, y, this.x + this.w, this.y + this.h));
+      if (distance < radius) this.health -= 50 - 50 * distance / radius;
+    }
+  }, {
+    key: "distance",
+    value: function distance(x1, y1, x2, y2) {
+      return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+    }
+  }, {
     key: "draw",
     value: function draw(context) {
+      if (this.health <= 0) {
+        context.fillStyle = "rgba(0,0,0,150)";
+        context.fillRect(this.x, this.y, this.w, this.h);
+        return;
+      }
+      // context.clearRect(0, 0, this.context.canvas.width, this.context.canvas.height);
       context.fillStyle = this.color;
       context.fillRect(this.x, this.y, this.w, this.h);
+      context.beginPath();
+      context.arc(this.x + this.w / 2, this.y, this.w / 4, 0, 2 * Math.PI, false);
+      context.fillStyle = this.color;
+      context.fill();
+      context.closePath();
+
+      context.translate(this.x + this.w / 2, this.y);
+      context.rotate(-this.angle * Math.PI / 180);
+      context.fillRect(0, -2.5, this.w / 4 * 3, 5);
+      context.rotate(this.angle * Math.PI / 180);
+      context.translate(-(this.x + this.w / 2), -this.y);
+    }
+  }, {
+    key: "drawHealth",
+    value: function drawHealth(context, offset) {
+      context.fillStyle = this.color;
+      context.fillText("Player " + (offset + 1), 10, 17 + 20 * offset);
+      context.fillRect(75, 10 + 20 * offset, this.health, 10);
+      context.strokeRect(75, 10 + 20 * offset, this.maxHealth, 10);
+    }
+  }, {
+    key: "drawStats",
+    value: function drawStats(context, offset) {
+      context.fillStyle = this.color;
+      context.fillText("Fuel: ", 195, 17 + 20 * offset);
+      context.strokeRect(220, 10 + 20 * offset, this.maxFuel, 10);
+      context.fillRect(220, 10 + 20 * offset, this.fuel, 10);
+    }
+  }, {
+    key: "drawTurnSymbol",
+    value: function drawTurnSymbol(context, offset) {
+      context.fillStyle = this.color;
+      context.strokeRect(6, 6 + 20 * offset, 75 + this.maxHealth + 4, 18);
+
+      // Floating indicator
+      if (this.health < 0) this.health = 0;
+      var d = new Date();
+      var timeOffset = Math.sin(d.getTime() / 500) * 15;
+      var x0 = this.x + this.w / 2;
+      var y0 = this.y - 50 + timeOffset;
+      context.beginPath();
+      context.moveTo(x0, y0);
+      context.lineTo(x0 - 5, y0 - 20);
+      context.lineTo(x0 + 5, y0 - 20);
+      context.lineTo(x0, y0);
+      context.fill();
+      context.closePath();
+
+      // Fuel and Power
+      this.drawStats(context, offset);
     }
   }]);
 
@@ -430,7 +613,10 @@ var _world2 = _interopRequireDefault(_world);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 window.addEventListener("load", function () {
+  var canvasContainer = document.getElementById("canvas-container");
   var canvas = document.getElementById("canvas");
+  canvas.width = Math.floor(canvasContainer.offsetWidth);
+  canvas.height = Math.floor(canvasContainer.offsetHeight);
   var world = new _world2.default(canvas);
 });
 
