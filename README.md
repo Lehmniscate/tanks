@@ -1,68 +1,33 @@
 # Tanks
+[Play it Live Now](https://lehmniscate.github.io/tanks)
 ## Background
 Tanks is a turn based game where a player faces off against other players or computer players. They are allowed to move a certain distance and aim and make a shot each turn. Terrain is destroyed with the shots as well as damage to the player if the player gets hit. Destroyed terrain under a tank will cause the tank to fall. Changes in terrain also provide varying obstacles for movement and aiming.
 
-## Functionality and MVP
+Tanks is a solo project by Michael Hooton.
 
-- [ ] Start, pause, and reset the game board
-- [ ] Control tanks: rotate cannons and move tanks
-- [ ] Shoot cannons and register damage
+![actionshot](docs/tanks_sample.gif)
 
-In addition, this project will include:
+## Technologies
 
-- [ ] An about modal describing the rules of the game
-- [ ] A production Readme
+Tanks uses JavaScript and HTML5's canvas features to draw an interactive game.
 
-## Wireframes
-This app consists of a single canvas element with the game level tanks and controls. The level is a two dimensional crossection of ground with tanks resting on top of it.
+## Terrain Destruction
 
-![wireframes](images/Tanks.png)
+By saving the terrain as its image data that is painted as-is to the screen, painting the background onto the terrain effectively destroys that part of the terrain. Collision detection is handled by asking the tanks or the bullets for their hitbox area, and polling the terrain's pixel data for that area and checking the color.
 
-## Architecture and Technologies
-This project will be implemented with the following technologies:
-- Vanilla Javscript for the game logic and rendering to html canvas
-- webpack to bundle and serve the various scripts
+```
+explosion(x, y, r) {
+  this.ctx.globalCompositeOperation = "destination-out";
+  this.ctx.beginPath();
+  this.ctx.arc(x, y, r, 0, Math.PI * 2, true);
+  this.ctx.fillStyle = this.backgroundColor;
+  this.ctx.fill();
+  this.ctx.closePath();
 
-In addition to the webpack entry file, there will be the following scripts involved in the project:
-
-`world.js`: handle the logic for rendering and holding the level data and tank pieces
-
-`tank.js`: handle the logic for the tank pieces and their interactions
-
-`level.js`: handle the logic for the terrain and its destruction
-
-## Implementation Timeline
-
-### Day 1
-Set up node modules and get webpack set up. Set up the basic level generation and render to screen
-
-- Get a green bundle with `webpack`
-- Learn enough to render a simple level
-
-### Day 2
-Complete the `tank.js` logic and have a tank that can move, aim, and fire in the level.
-
-- Complete the `tank.js` module
-- Render a tank in the level
-- Bind movement and control keys to movement and control of the tank in the level
-- Render the movement and control of the tanks
-
-### Day 3
-Complete the `level.js` logic so that worlds can be generated and destroyed.
-
-- Complete the `level.js` module
-- Implement destruction logic into the level
-- Ensure correct movement of tanks on top of the level
-- Ensure tanks fall appropriately and climb appropriately
-
-### Day 4
-Complete the game logic in `world.js` to handle turns and destruction of tanks and starting/restarting of the game
-
-- Implement Game-level controls
-- Add multiple players and implement turns and game-end
-
-## Bonus features
-Some anticipated features to implement:
-
-- Move the logic into three dimensions and implement `three.js`
-- Add different weapons to be used by the tanks with varying effects and drawbacks
+  //update
+  let {tx, ty, width, height} = this.terrain_bitmap;
+  var newCanvasData = this.ctx.getImageData(tx, ty, width, height);
+  this.terrain_bitmap.imageData = newCanvasData;
+  this.ctx.putImageData(newCanvasData, tx, ty);
+}
+```

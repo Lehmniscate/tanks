@@ -416,6 +416,7 @@ var Level = function () {
 
     this.width = width;
     this.height = height;
+    this.backgroundColor = "rgba(255, 255, 255, 255)";
 
     var buffer = document.createElement('canvas');
     buffer.height = this.height;
@@ -445,14 +446,20 @@ var Level = function () {
       this.ctx.globalCompositeOperation = "destination-out";
       this.ctx.beginPath();
       this.ctx.arc(x, y, r, 0, Math.PI * 2, true);
-      this.ctx.fillStyle = "rgba(255, 255, 255, 255)";
+      this.ctx.fillStyle = this.backgroundColor;
       this.ctx.fill();
       this.ctx.closePath();
 
       //update
-      var newCanvasData = this.ctx.getImageData(this.terrain_bitmap.x, this.terrain_bitmap.y, this.terrain_bitmap.width, this.terrain_bitmap.height);
+      var _terrain_bitmap = this.terrain_bitmap,
+          tx = _terrain_bitmap.x,
+          ty = _terrain_bitmap.y,
+          width = _terrain_bitmap.width,
+          height = _terrain_bitmap.height;
+
+      var newCanvasData = this.ctx.getImageData(tx, ty, width, height);
       this.terrain_bitmap.imageData = newCanvasData;
-      this.ctx.putImageData(newCanvasData, this.terrain_bitmap.x, this.terrain_bitmap.y);
+      this.ctx.putImageData(newCanvasData, tx, ty);
     }
   }]);
 

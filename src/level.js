@@ -4,6 +4,7 @@ export default class Level {
   constructor(width, height) {
     this.width = width;
     this.height = height;
+    this.backgroundColor = "rgba(255, 255, 255, 255)";
 
     let buffer = document.createElement('canvas');
     buffer.height = this.height;
@@ -29,13 +30,14 @@ export default class Level {
     this.ctx.globalCompositeOperation = "destination-out";
     this.ctx.beginPath();
     this.ctx.arc(x, y, r, 0, Math.PI * 2, true);
-    this.ctx.fillStyle = "rgba(255, 255, 255, 255)";
+    this.ctx.fillStyle = this.backgroundColor;
     this.ctx.fill();
     this.ctx.closePath();
 
     //update
-    var newCanvasData = this.ctx.getImageData(this.terrain_bitmap.x, this.terrain_bitmap.y, this.terrain_bitmap.width, this.terrain_bitmap.height);
+    let {x: tx, y: ty, width, height} = this.terrain_bitmap;
+    var newCanvasData = this.ctx.getImageData(tx, ty, width, height);
     this.terrain_bitmap.imageData = newCanvasData;
-    this.ctx.putImageData(newCanvasData, this.terrain_bitmap.x, this.terrain_bitmap.y);
+    this.ctx.putImageData(newCanvasData, tx, ty);
   }
 }
