@@ -123,7 +123,10 @@ export default class Tank {
   }
 
   drawStats(context, offset) {
-
+    context.fillStyle = this.color;
+    context.fillText("Fuel: ", 195, 17 + 20*offset);
+    context.strokeRect(220, 10 + 20*offset, this.maxFuel, 10);
+    context.fillRect(220, 10 + 20*offset, this.fuel, 10);
   }
 
   drawTurnSymbol(context, offset) {
@@ -131,6 +134,7 @@ export default class Tank {
     context.strokeRect(6, 6 + 20*offset, 75 + this.maxHealth + 4, 18);
 
     // Floating indicator
+    if(this.health < 0) this.health = 0;
     let d = new Date();
     let timeOffset = Math.sin(d.getTime() / 500) * 15;
     let x0 = this.x + (this.w / 2);

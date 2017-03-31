@@ -15,5 +15,9 @@ body {
 }
 
 #canvas {
-  background-color: #fff;
+  background: linear-gradient(#80b6ff, #ffb770);
+  min-width: 800px;
+  min-height: 600px;
+  width: 70%;
+  height: 80%;
 }

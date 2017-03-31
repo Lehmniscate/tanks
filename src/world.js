@@ -14,7 +14,7 @@ export default class World {
 
     this.numTanks = 4;
     this.tankColors = [
-      "rgba(0,150,150,255)",
+      "rgba(40,100,100,255)",
       "rgba(150,0,0,255)",
       "rgba(0,0,150,255)",
       "rgba(150,150,0,255)"
