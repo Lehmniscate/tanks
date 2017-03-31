@@ -87,6 +87,7 @@ var Bitmap = function () {
 
     this.imageData = imageData;
     this.height = this.imageData.height;
+    this.minHeight = this.height / 3;
     this.width = this.imageData.width;
     this.x = 0;
     this.y = 0;
@@ -106,6 +107,14 @@ var Bitmap = function () {
       return false;
     }
   }, {
+    key: "sinHeight",
+    value: function sinHeight(x) {
+      var yOffset = (this.minHeight + this.height) / 2;
+      var amplitude = (this.height - this.minHeight) / 2;
+      var period = 2 * Math.PI / this.width * (3 / 2);
+      return amplitude * Math.sin(period * x) + yOffset;
+    }
+  }, {
     key: "fillColor",
     value: function fillColor() {
       for (var _len = arguments.length, colors = Array(_len), _key = 0; _key < _len; _key++) {
@@ -113,7 +122,8 @@ var Bitmap = function () {
       }
 
       for (var x = 0; x < this.imageData.width; x++) {
-        for (var y = 0; y < this.imageData.height; y++) {
+        var height = Math.floor(this.sinHeight(x));
+        for (var y = height - this.minHeight; y < this.height; y++) {
 
           var idx = (x + y * this.width) * 4;
           for (var i = 0; i < 4; i++) {
@@ -180,6 +190,10 @@ var World = function () {
     this.height = canvas.height;
     this.canvases = {};
     this.firing = false;
+    this.transition = true;
+    this.minTransitionSize = 10;
+    this.maxTransitionSize = 100;
+    this.transitionSize = this.minTransitionSize;
 
     this.level = new _level2.default(this.width, this.height);
 
@@ -199,6 +213,8 @@ var World = function () {
     this.spaceKey = false;
     this.aimLeft = false;
     this.aimRight = false;
+    this.powerUp = false;
+    this.powerDown = false;
 
     this.paint();
     this.loop();
@@ -219,18 +235,13 @@ var World = function () {
     value: function nextTurn() {
       this.tank = (this.tank + 1) % this.numTanks;
       if (this.tanks[this.tank].health <= 0) this.nextTurn();
+      this.transitionSize = this.minTransitionSize;
+      this.transition = true;
     }
   }, {
     key: 'fireBullet',
     value: function fireBullet() {
-      var v = 7;
-      this.bullet = {
-        vx: v * Math.cos(this.tanks[this.tank].angle * Math.PI / 180),
-        vy: -v * Math.sin(this.tanks[this.tank].angle * Math.PI / 180),
-        x: this.tanks[this.tank].x + this.tanks[this.tank].w / 2,
-        y: this.tanks[this.tank].y,
-        radius: 40
-      };
+      this.bullet = this.tanks[this.tank].fire();
       this.firing = true;
     }
   }, {
@@ -264,12 +275,14 @@ var World = function () {
   }, {
     key: 'outOfBounds',
     value: function outOfBounds(x, y) {
-      return x < 0 || x > this.width || y < 0 || y > this.height;
+      return x < 0 || x > this.width || y > this.height;
     }
   }, {
     key: 'move',
     value: function move() {
-      if (this.spaceKey || this.firing) {
+      if (this.transition) {
+        this.paint();
+      } else if (this.spaceKey || this.firing) {
         if (!this.firing) {
           this.fireBullet();
         } else {
@@ -280,17 +293,23 @@ var World = function () {
         if (this.aimRight) this.tanks[this.tank].aim("right");
         if (this.leftKey) this.tanks[this.tank].move("left")(this.level);
         if (this.rightKey) this.tanks[this.tank].move("right")(this.level);
+        if (this.powerUp) this.tanks[this.tank].changePower("up")();
+        if (this.powerDown) this.tanks[this.tank].changePower("down")();
       }
 
       for (var t = 0; t < this.numTanks; t++) {
         this.tanks[t].speed++;
         if (this.tanks[t].speed > 0) {
           for (var i = 0; i < this.tanks[t].speed; i++) {
-            if (!this.level.collision(this.tanks[t].hitbox(0, 10, 30, 1))) {
+            if (!this.tanks[t].out && !this.level.collision(this.tanks[t].hitbox(0, 10, 30, 1))) {
               this.tanks[t].y += 1;
             } else {
               this.tanks[t].speed = 0;
             }
+          }
+          if (this.outOfBounds(this.tanks[t].x, this.tanks[t].y)) {
+            this.tanks[t].kill();
+            this.nextTurn();
           }
         }
       }
@@ -322,7 +341,31 @@ var World = function () {
       }
 
       this.tanks[this.tank].drawTurnSymbol(this.ctx, this.tank);
+
+      // Paint transition frames
+      if (this.transition) {
+        var x = this.width / 2;
+        var y = this.height / 2;
+        this.ctx.textAlign = "center";
+        var alpha = 1 - this.transitionSize / this.maxTransitionSize;
+        var color = this.tanks[this.tank].color.split(",").splice(0, 3).join(",") + ',' + alpha + ')';
+        this.ctx.fillStyle = color;
+        this.ctx.font = this.transitionSize + 'px sans-serif';
+        this.ctx.fillText('Player ' + (this.tank + 1), x, y);
+        this.transitionSize += 1;
+        if (this.transitionSize > this.maxTransitionSize) this.transition = false;
+        this.ctx.font = '10px sans-serif';
+        this.ctx.textAlign = "left";
+      }
+
+      // Paint information
+      if (this.informationHover) {
+        this.drawControls();
+      }
     }
+  }, {
+    key: 'drawControls',
+    value: function drawControls() {}
   }, {
     key: 'keyChange',
     value: function keyChange(down) {
@@ -335,6 +378,8 @@ var World = function () {
         if (key === 65) _this2.aimLeft = down;
         if (key === 68) _this2.aimRight = down;
         if (key === 32) _this2.spaceKey = down;
+        if (key === 87) _this2.powerUp = down;
+        if (key === 83) _this2.powerDown = down;
       };
     }
   }]);
@@ -377,7 +422,7 @@ var Level = function () {
     buffer.width = this.width;
     this.ctx = buffer.getContext("2d");
 
-    this.terrain_bitmap = new _bitmap2.default(this.ctx.createImageData(this.width, this.height / 2));
+    this.terrain_bitmap = new _bitmap2.default(this.ctx.createImageData(this.width, this.height * 3 / 4));
     this.terrain_bitmap.fillColor(50, 175, 50, 255);
     this.terrain_bitmap.y = this.height - this.terrain_bitmap.height;
 
@@ -452,6 +497,8 @@ var Tank = function () {
     this.maxFuel = 100;
     this.fuel = this.maxFuel;
 
+    this.out = false;
+
     var buffer = document.createElement('canvas');
     buffer.height = canvas.height;
     buffer.width = canvas.width;
@@ -471,39 +518,71 @@ var Tank = function () {
   }, {
     key: "fire",
     value: function fire() {
-      var v = this.power || 7;
+      var v = this.power + 1;
+      this.fuel = this.maxFuel;
       return {
         vx: v * Math.cos(this.angle * Math.PI / 180),
         vy: -v * Math.sin(this.angle * Math.PI / 180),
         x: this.x + this.w / 2,
-        y: this.y
+        y: this.y,
+        radius: 50
       };
-      this.fuel = this.maxFuel;
+    }
+  }, {
+    key: "changePower",
+    value: function changePower(direction) {
+      var _this = this;
+
+      var change = 0;
+      if (direction === "up") {
+        change = 0.5;
+      } else {
+        change = -0.5;
+      }
+
+      return function () {
+        _this.power += change;
+        if (_this.power > _this.maxPower) _this.power = _this.maxPower;
+        if (_this.power < 0) _this.power = 0;
+      };
     }
   }, {
     key: "move",
     value: function move(direction) {
-      var _this = this;
+      var _this2 = this;
 
       var x = void 0;
+      var outOfBounds = void 0;
       if (direction === "left") {
         direction = -1;
         x = 0;
+        outOfBounds = function outOfBounds() {
+          return _this2.x - 1 < 0;
+        };
       } else {
         direction = 1;
         x = this.w;
+        outOfBounds = function outOfBounds(level) {
+          return _this2.x + x + 1 > level.width;
+        };
       }
 
       return function (level) {
-        if (_this.fuel <= 0) return;
-        if (!level.collision(_this.hitbox(x, 0, 1, 1))) {
-          _this.x += direction;
-          _this.fuel -= 1.5;
+        if (_this2.fuel <= 0) return;
+        if (!level.collision(_this2.hitbox(x, 0, 1, 1)) && !outOfBounds(level)) {
+          _this2.x += direction;
+          _this2.fuel -= 1.5;
         }
-        while (level.collision(_this.hitbox(0, _this.h, _this.w, 1))) {
-          _this.y -= 1;
+        while (level.collision(_this2.hitbox(0, _this2.h, _this2.w, 1))) {
+          _this2.y -= 1;
         }
       };
+    }
+  }, {
+    key: "kill",
+    value: function kill() {
+      this.health = 0;
+      this.out = true;
     }
   }, {
     key: "hitbox",
@@ -524,6 +603,7 @@ var Tank = function () {
       if (this.health <= 0) return;
       var distance = Math.min(this.distance(x, y, this.x, this.y), this.distance(x, y, this.x + this.w, this.y), this.distance(x, y, this.x, this.y + this.h), this.distance(x, y, this.x + this.w, this.y + this.h));
       if (distance < radius) this.health -= 50 - 50 * distance / radius;
+      if (this.health < 0) this.health = 0;
     }
   }, {
     key: "distance",
@@ -533,12 +613,14 @@ var Tank = function () {
   }, {
     key: "draw",
     value: function draw(context) {
+      if (this.out) return;
+
       if (this.health <= 0) {
         context.fillStyle = "rgba(0,0,0,150)";
         context.fillRect(this.x, this.y, this.w, this.h);
         return;
       }
-      // context.clearRect(0, 0, this.context.canvas.width, this.context.canvas.height);
+
       context.fillStyle = this.color;
       context.fillRect(this.x, this.y, this.w, this.h);
       context.beginPath();
@@ -557,17 +639,25 @@ var Tank = function () {
     key: "drawHealth",
     value: function drawHealth(context, offset) {
       context.fillStyle = this.color;
-      context.fillText("Player " + (offset + 1), 10, 17 + 20 * offset);
+      context.fillText("Player " + (offset + 1), 10, 19 + 20 * offset);
       context.fillRect(75, 10 + 20 * offset, this.health, 10);
       context.strokeRect(75, 10 + 20 * offset, this.maxHealth, 10);
     }
   }, {
     key: "drawStats",
     value: function drawStats(context, offset) {
+      // Fuel
       context.fillStyle = this.color;
-      context.fillText("Fuel: ", 195, 17 + 20 * offset);
+      context.fillText("Fuel: ", 195, 19 + 20 * offset);
       context.strokeRect(220, 10 + 20 * offset, this.maxFuel, 10);
       context.fillRect(220, 10 + 20 * offset, this.fuel, 10);
+
+      // Power
+      var startX = 330;
+      context.fillStyle = this.color;
+      context.fillText("Power: ", startX, 19 + 20 * offset);
+      context.strokeRect(startX + 35, 10 + 20 * offset, this.maxPower * 10, 10);
+      context.fillRect(startX + 35, 10 + 20 * offset, this.power * 10, 10);
     }
   }, {
     key: "drawTurnSymbol",
@@ -579,12 +669,13 @@ var Tank = function () {
       if (this.health < 0) this.health = 0;
       var d = new Date();
       var timeOffset = Math.sin(d.getTime() / 500) * 15;
+      var timeWidth = Math.sin(d.getTime() / 350) * 7;
       var x0 = this.x + this.w / 2;
       var y0 = this.y - 50 + timeOffset;
       context.beginPath();
       context.moveTo(x0, y0);
-      context.lineTo(x0 - 5, y0 - 20);
-      context.lineTo(x0 + 5, y0 - 20);
+      context.lineTo(x0 - timeWidth, y0 - 20);
+      context.lineTo(x0 + timeWidth, y0 - 20);
       context.lineTo(x0, y0);
       context.fill();
       context.closePath();
@@ -612,12 +703,40 @@ var _world2 = _interopRequireDefault(_world);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-window.addEventListener("load", function () {
+var newGame = function newGame() {
   var canvasContainer = document.getElementById("canvas-container");
   var canvas = document.getElementById("canvas");
   canvas.width = Math.floor(canvasContainer.offsetWidth);
   canvas.height = Math.floor(canvasContainer.offsetHeight);
   var world = new _world2.default(canvas);
+};
+
+window.addEventListener("load", function () {
+  newGame();
+  var modal = document.getElementsByClassName('modal')[0];
+  var btn = document.getElementById("controls");
+  var span = document.getElementsByClassName("close")[0];
+
+  btn.addEventListener("click", function () {
+    modal.style.display = "flex";
+  });
+
+  span.onclick = function () {
+    modal.style.display = "none";
+  };
+
+  // When the user clicks anywhere outside of the modal, close it
+  window.onclick = function (event) {
+    if (event.target == modal) {
+      modal.style.display = "none";
+    }
+  };
+
+  var newBtn = document.getElementsByClassName('button')[0];
+  newBtn.addEventListener("click", function () {
+    newGame();
+    modal.style.display = "none";
+  });
 });
 
 /***/ })

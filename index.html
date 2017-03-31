@@ -2,13 +2,38 @@
 <html>
 <head>
   <title>Tanks</title>
+  <script src="https://use.fontawesome.com/bd9ce488f8.js"></script>
   <link href="stylesheets/reset.css" type="text/css" rel="stylesheet" />
   <link rel="stylesheet" href="stylesheets/index.css"/>
   <script src="bundle.js"></script>
 </head>
 <body>
-  <div id="canvas-container">
-    <canvas id="canvas" />
+  <div id="container">
+    <div id="topbar">
+      <a href="https://github.com/Lehmniscate/tanks"><i class="fa fa-github" aria-hidden="true"></i></a>
+      <h1>Tanks</h1>
+      <div id="controls"><i class="fa fa-question-circle"></i></div>
+    </div>
+    <div id="canvas-container">
+      <canvas id="canvas" />
+    </div>
+  </div>
+  <div class="modal">
+    <div id="modal-content">
+      <span class="close">&times;</span>
+      <p>Tanks is a turn based strategy game. The goal is to shoot the other tanks and be the sole survivor. Falling off will result in death as well as getting hit too many times. The terrain is destructable, so keep that in mind! Also, you have a limited amount of fuel per turn, so use it wisely!</p>
+      <h4>Controls</h4>
+      <ul>
+        <li>W - Increase shot power</li>
+        <li>S - Decrease shot power</li>
+        <li>A - Aim towards the left</li>
+        <li>D - Aim towards the right</li>
+        <li>Left Arrow - Move towards the left</li>
+        <li>Right Arrow - Move towards the right</li>
+        <li>Space - Fire!</li>
+      </ul>
+      <div><span class="button">New Game</span></div>
+    </div>
   </div>
 </body>
 </html>

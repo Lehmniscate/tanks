@@ -2,6 +2,7 @@ export default class Bitmap {
   constructor(imageData) {
     this.imageData = imageData;
     this.height = this.imageData.height;
+    this.minHeight = this.height / 3;
     this.width = this.imageData.width;
     this.x = 0;
     this.y = 0;
@@ -19,9 +20,17 @@ export default class Bitmap {
     return false;
   }
 
+  sinHeight(x) {
+    let yOffset = (this.minHeight + this.height) / 2;
+    let amplitude = (this.height - this.minHeight) / 2;
+    let period = (((2 * Math.PI) / this.width) * (3 / 2));
+    return ((amplitude)*Math.sin(period * x) + (yOffset));
+  }
+
   fillColor(...colors) {
     for(let x = 0; x < this.imageData.width; x++) {
-      for(let y = 0; y < this.imageData.height; y++) {
+      let height = Math.floor(this.sinHeight(x));
+      for(let y = height - this.minHeight; y < (this.height ); y++) {
 
         let idx = (x + y * this.width) * 4;
         for(let i = 0; i < 4; i++) {

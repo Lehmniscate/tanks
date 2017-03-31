@@ -17,6 +17,8 @@ export default class Tank {
     this.maxFuel = 100;
     this.fuel = this.maxFuel;
 
+    this.out = false;
+
     let buffer = document.createElement('canvas');
     buffer.height = canvas.height;
     buffer.width = canvas.width;
@@ -33,29 +35,48 @@ export default class Tank {
   }
 
   fire() {
-    let v = this.power || 7;
+    let v = this.power + 1;
+    this.fuel = this.maxFuel;
     return {
       vx: v * Math.cos(this.angle * Math.PI / 180),
       vy: -v * Math.sin(this.angle * Math.PI / 180),
       x: this.x + (this.w / 2),
-      y: this.y
+      y: this.y,
+      radius: 50
     };
-    this.fuel = this.maxFuel;
+  }
+
+  changePower(direction) {
+    let change = 0;
+    if(direction === "up") {
+      change = 0.5;
+    } else {
+      change = -0.5;
+    }
+
+    return () => {
+      this.power += change;
+      if(this.power > this.maxPower) this.power = this.maxPower;
+      if(this.power < 0) this.power = 0;
+    }
   }
 
   move(direction) {
     let x;
+    let outOfBounds;
     if(direction === "left") {
       direction = -1;
       x = 0;
+      outOfBounds = () => this.x - 1 < 0;
     } else {
       direction = 1;
       x = this.w;
+      outOfBounds = level => this.x + x + 1 > level.width;
     }
 
     return (level) => {
       if(this.fuel <= 0) return;
-      if (!level.collision(this.hitbox(x, 0, 1, 1))) {
+      if (!level.collision(this.hitbox(x, 0, 1, 1)) && !outOfBounds(level) ) {
         this.x += direction;
         this.fuel -= 1.5;
       }
@@ -63,6 +84,11 @@ export default class Tank {
         this.y -= 1;
       }
     }
+  }
+
+  kill() {
+    this.health = 0;
+    this.out = true;
   }
 
   hitbox(xOffset, yOffset, w, h) {
@@ -87,6 +113,7 @@ export default class Tank {
     );
     if(distance < radius)
       this.health -= 50 - ((50 * distance) / radius);
+    if(this.health < 0) this.health = 0;
   }
 
   distance(x1, y1, x2, y2) {
@@ -94,12 +121,14 @@ export default class Tank {
   }
 
   draw(context) {
+    if(this.out) return;
+
     if(this.health <= 0) {
       context.fillStyle = "rgba(0,0,0,150)";
       context.fillRect(this.x, this.y, this.w, this.h);
       return;
     }
-    // context.clearRect(0, 0, this.context.canvas.width, this.context.canvas.height);
+
     context.fillStyle = this.color;
     context.fillRect(this.x, this.y, this.w, this.h);
     context.beginPath();
@@ -117,16 +146,24 @@ export default class Tank {
 
   drawHealth(context, offset) {
     context.fillStyle = this.color;
-    context.fillText(`Player ${offset + 1}`, 10, 17 + 20*offset);
+    context.fillText(`Player ${offset + 1}`, 10, 19 + 20*offset);
     context.fillRect(75, 10 + 20*offset, this.health, 10);
     context.strokeRect(75, 10 + 20*offset, this.maxHealth, 10)
   }
 
   drawStats(context, offset) {
+    // Fuel
     context.fillStyle = this.color;
-    context.fillText("Fuel: ", 195, 17 + 20*offset);
+    context.fillText("Fuel: ", 195, 19 + 20*offset);
     context.strokeRect(220, 10 + 20*offset, this.maxFuel, 10);
     context.fillRect(220, 10 + 20*offset, this.fuel, 10);
+
+    // Power
+    let startX = 330;
+    context.fillStyle = this.color;
+    context.fillText("Power: ", startX, 19 + 20*offset);
+    context.strokeRect(startX + 35, 10 + 20*offset, this.maxPower * 10, 10);
+    context.fillRect(startX + 35, 10 + 20*offset, this.power * 10, 10);
   }
 
   drawTurnSymbol(context, offset) {
@@ -137,12 +174,13 @@ export default class Tank {
     if(this.health < 0) this.health = 0;
     let d = new Date();
     let timeOffset = Math.sin(d.getTime() / 500) * 15;
+    let timeWidth = Math.sin(d.getTime() / 350) * 7;
     let x0 = this.x + (this.w / 2);
     let y0 = this.y - 50 + timeOffset;
     context.beginPath();
     context.moveTo(x0, y0);
-    context.lineTo(x0 - 5, y0 - 20);
-    context.lineTo(x0 + 5, y0 - 20);
+    context.lineTo(x0 - timeWidth, y0 - 20);
+    context.lineTo(x0 + timeWidth, y0 - 20);
     context.lineTo(x0, y0);
     context.fill();
     context.closePath();

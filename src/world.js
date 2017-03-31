@@ -9,6 +9,10 @@ export default class World {
     this.height = canvas.height;
     this.canvases = {};
     this.firing = false;
+    this.transition = true;
+    this.minTransitionSize = 10;
+    this.maxTransitionSize = 100;
+    this.transitionSize = this.minTransitionSize;
 
     this.level = new Level(this.width, this.height);
 
@@ -33,6 +37,8 @@ export default class World {
     this.spaceKey = false;
     this.aimLeft = false;
     this.aimRight = false;
+    this.powerUp = false;
+    this.powerDown = false;
 
     this.paint();
     this.loop();
@@ -46,17 +52,12 @@ export default class World {
   nextTurn() {
     this.tank = (this.tank + 1) % this.numTanks;
     if(this.tanks[this.tank].health <= 0) this.nextTurn();
+    this.transitionSize = this.minTransitionSize;
+    this.transition = true;
   }
 
   fireBullet() {
-    let v = 7;
-    this.bullet = {
-      vx: v * Math.cos(this.tanks[this.tank].angle * Math.PI / 180),
-      vy: - v * Math.sin(this.tanks[this.tank].angle * Math.PI / 180),
-      x: this.tanks[this.tank].x + (this.tanks[this.tank].w / 2),
-      y: this.tanks[this.tank].y,
-      radius: 40
-    };
+    this.bullet = this.tanks[this.tank].fire();
     this.firing = true;
   }
 
@@ -88,11 +89,13 @@ export default class World {
   }
 
   outOfBounds(x, y) {
-    return x < 0 || x > this.width || y < 0 || y > this.height;
+    return x < 0 || x > this.width || y > this.height;
   }
 
   move() {
-    if (this.spaceKey || this.firing) {
+    if(this.transition) {
+      this.paint();
+    } else if (this.spaceKey || this.firing) {
       if(!this.firing) {
         this.fireBullet();
       } else {
@@ -103,18 +106,24 @@ export default class World {
       if (this.aimRight) this.tanks[this.tank].aim("right");
       if (this.leftKey) this.tanks[this.tank].move("left")(this.level);
       if (this.rightKey) this.tanks[this.tank].move("right")(this.level);
+      if (this.powerUp) this.tanks[this.tank].changePower("up")();
+      if (this.powerDown) this.tanks[this.tank].changePower("down")();
     }
 
     for(let t = 0; t < this.numTanks; t++){
       this.tanks[t].speed++;
       if (this.tanks[t].speed > 0) {
-          for (let i = 0; i < this.tanks[t].speed; i++) {
-              if (!this.level.collision(this.tanks[t].hitbox(0, 10, 30, 1))) {
-                  this.tanks[t].y += 1;
-              } else {
-                  this.tanks[t].speed = 0;
-              }
+        for (let i = 0; i < this.tanks[t].speed; i++) {
+          if (!this.tanks[t].out && !this.level.collision(this.tanks[t].hitbox(0, 10, 30, 1))) {
+            this.tanks[t].y += 1;
+          } else {
+            this.tanks[t].speed = 0;
           }
+        }
+        if (this.outOfBounds(this.tanks[t].x, this.tanks[t].y)) {
+          this.tanks[t].kill();
+          this.nextTurn();
+        }
       }
     }
     this.paint();
@@ -144,6 +153,31 @@ export default class World {
     }
 
     this.tanks[this.tank].drawTurnSymbol(this.ctx, this.tank);
+
+    // Paint transition frames
+    if(this.transition) {
+      let x = this.width / 2;
+      let y = this.height / 2;
+      this.ctx.textAlign = "center";
+      let alpha = 1 - (this.transitionSize / this.maxTransitionSize);
+      let color =  `${this.tanks[this.tank].color.split(",").splice(0, 3).join(",")},${alpha})`;
+      this.ctx.fillStyle = color;
+      this.ctx.font = `${this.transitionSize}px sans-serif`;
+      this.ctx.fillText(`Player ${this.tank + 1}`, x, y);
+      this.transitionSize += 1;
+      if(this.transitionSize > this.maxTransitionSize) this.transition = false;
+      this.ctx.font = `10px sans-serif`;
+      this.ctx.textAlign = "left";
+    }
+
+    // Paint information
+    if(this.informationHover) {
+      this.drawControls();
+    }
+  }
+
+  drawControls() {
+
   }
 
   keyChange(down) {
@@ -154,6 +188,8 @@ export default class World {
       if(key === 65) this.aimLeft = down;
       if(key === 68) this.aimRight = down;
       if(key === 32) this.spaceKey = down;
+      if(key === 87) this.powerUp = down;
+      if(key === 83) this.powerDown = down;
     }
   }
 }

@@ -10,7 +10,7 @@ export default class Level {
     buffer.width = this.width;
     this.ctx = buffer.getContext("2d");
 
-    this.terrain_bitmap = new Bitmap(this.ctx.createImageData(this.width, this.height / 2));
+    this.terrain_bitmap = new Bitmap(this.ctx.createImageData(this.width, this.height*3 / 4));
     this.terrain_bitmap.fillColor(50, 175, 50, 255);
     this.terrain_bitmap.y = this.height - this.terrain_bitmap.height;
 
