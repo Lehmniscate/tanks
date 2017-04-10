@@ -29,9 +29,14 @@ window.addEventListener("load", () => {
     }
   };
 
-  let newBtn = document.getElementsByClassName('button')[0];
+  let newBtn = document.getElementById('new-game');
   newBtn.addEventListener("click", () => {
     newGame();
+    modal.style.display = "none";
+  });
+
+  let contBtn = document.getElementById('continue');
+  contBtn.addEventListener("click", () => {
     modal.style.display = "none";
   });
 });

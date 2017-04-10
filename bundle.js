@@ -739,9 +739,14 @@ window.addEventListener("load", function () {
     }
   };
 
-  var newBtn = document.getElementsByClassName('button')[0];
+  var newBtn = document.getElementById('new-game');
   newBtn.addEventListener("click", function () {
     newGame();
+    modal.style.display = "none";
+  });
+
+  var contBtn = document.getElementById('continue');
+  contBtn.addEventListener("click", function () {
     modal.style.display = "none";
   });
 });
