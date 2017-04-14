@@ -188,4 +188,8 @@ export default class Tank {
     // Fuel and Power
     this.drawStats(context, offset);
   }
+
+  alive() {
+    return this.health > 0;
+  }
 }

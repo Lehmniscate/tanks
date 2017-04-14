@@ -51,9 +51,12 @@ export default class World {
 
   nextTurn() {
     this.tank = (this.tank + 1) % this.numTanks;
-    if(this.tanks[this.tank].health <= 0) this.nextTurn();
-    this.transitionSize = this.minTransitionSize;
-    this.transition = true;
+    if(this.tanks[this.tank].health <= 0) {
+      this.nextTurn();
+    } else {
+      this.transitionSize = this.minTransitionSize;
+      this.transition = true;
+    }
   }
 
   fireBullet() {
@@ -120,7 +123,7 @@ export default class World {
             this.tanks[t].speed = 0;
           }
         }
-        if (this.outOfBounds(this.tanks[t].x, this.tanks[t].y)) {
+        if (this.outOfBounds(this.tanks[t].x, this.tanks[t].y) && this.tanks[t].alive()) {
           this.tanks[t].kill();
           this.nextTurn();
         }
