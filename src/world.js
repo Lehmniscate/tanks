@@ -1,6 +1,7 @@
 import Level from './level';
 import Tank from './tank';
 import Bitmap from './bitmap';
+import Player from './player';
 
 export default class World {
   constructor(canvas) {
@@ -25,20 +26,15 @@ export default class World {
     ]
     this.tanks = {};
     let spacing = this.width / (this.numTanks );
+    
+    this.players = {};
     for(let i = 0; i < this.numTanks; i++) {
       this.tanks[i] = new Tank((i * spacing) + (spacing / 2) - 30, 0, this.tankColors[i], canvas);
+      this.players[i] = new Player(this.tanks[i], this.fireBullet.bind(this), this);
     }
     this.tank = 0;
 
-    document.onkeydown = this.keyChange(true);
-    document.onkeyup = this.keyChange(false);
-    this.leftKey = false;
-    this.rightKey = false;
-    this.spaceKey = false;
-    this.aimLeft = false;
-    this.aimRight = false;
-    this.powerUp = false;
-    this.powerDown = false;
+    this.bindKeyPresses();
 
     this.paint();
     this.loop();
@@ -60,6 +56,7 @@ export default class World {
   }
 
   fireBullet() {
+    if (this.firing) return;
     this.bullet = this.tanks[this.tank].fire();
     this.firing = true;
   }
@@ -98,36 +95,14 @@ export default class World {
   move() {
     if(this.transition) {
       this.paint();
-    } else if (this.spaceKey || this.firing) {
-      if(!this.firing) {
-        this.fireBullet();
-      } else {
-        this.bulletPhysics();
-      }
+    } else if (this.firing) {
+      this.bulletPhysics();
     } else {
-      if (this.aimLeft) this.tanks[this.tank].aim("left");
-      if (this.aimRight) this.tanks[this.tank].aim("right");
-      if (this.leftKey) this.tanks[this.tank].move("left")(this.level);
-      if (this.rightKey) this.tanks[this.tank].move("right")(this.level);
-      if (this.powerUp) this.tanks[this.tank].changePower("up")();
-      if (this.powerDown) this.tanks[this.tank].changePower("down")();
+      this.players[this.tank].move(this.level);
     }
 
     for(let t = 0; t < this.numTanks; t++){
-      this.tanks[t].speed++;
-      if (this.tanks[t].speed > 0) {
-        for (let i = 0; i < this.tanks[t].speed; i++) {
-          if (!this.tanks[t].out && !this.level.collision(this.tanks[t].hitbox(0, 10, 30, 1))) {
-            this.tanks[t].y += 1;
-          } else {
-            this.tanks[t].speed = 0;
-          }
-        }
-        if (this.outOfBounds(this.tanks[t].x, this.tanks[t].y) && this.tanks[t].alive()) {
-          this.tanks[t].kill();
-          this.nextTurn();
-        }
-      }
+      this.players[t].physics(this.level);
     }
     this.paint();
   }
@@ -194,5 +169,17 @@ export default class World {
       if(key === 87) this.powerUp = down;
       if(key === 83) this.powerDown = down;
     }
+  }
+
+  bindKeyPresses() {
+    this.leftKey = false;
+    this.rightKey = false;
+    this.spaceKey = false;
+    this.aimRight = false;
+    this.powerUp = false;
+    this.powerDown = false;
+
+    document.onkeydown = this.keyChange(true);
+    document.onkeyup = this.keyChange(false);
   }
 }
