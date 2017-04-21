@@ -5,7 +5,7 @@ Tanks is a turn based game where a player faces off against other players or com
 
 Tanks is a solo project by Michael Hooton.
 
-![actionshot](docs/tanks_sample.gif)
+![actionshot](docs/sample.gif)
 
 ## Technologies
 
