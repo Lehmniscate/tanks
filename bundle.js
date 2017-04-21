@@ -63,7 +63,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 4);
+/******/ 	return __webpack_require__(__webpack_require__.s = 5);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -169,13 +169,17 @@ var _level = __webpack_require__(2);
 
 var _level2 = _interopRequireDefault(_level);
 
-var _tank = __webpack_require__(3);
+var _tank = __webpack_require__(4);
 
 var _tank2 = _interopRequireDefault(_tank);
 
 var _bitmap = __webpack_require__(0);
 
 var _bitmap2 = _interopRequireDefault(_bitmap);
+
+var _player = __webpack_require__(3);
+
+var _player2 = _interopRequireDefault(_player);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -201,20 +205,15 @@ var World = function () {
     this.tankColors = ["rgba(40,100,100,255)", "rgba(150,0,0,255)", "rgba(0,0,150,255)", "rgba(150,150,0,255)"];
     this.tanks = {};
     var spacing = this.width / this.numTanks;
+
+    this.players = {};
     for (var i = 0; i < this.numTanks; i++) {
       this.tanks[i] = new _tank2.default(i * spacing + spacing / 2 - 30, 0, this.tankColors[i], canvas);
+      this.players[i] = new _player2.default(this.tanks[i], this.fireBullet.bind(this), this);
     }
     this.tank = 0;
 
-    document.onkeydown = this.keyChange(true);
-    document.onkeyup = this.keyChange(false);
-    this.leftKey = false;
-    this.rightKey = false;
-    this.spaceKey = false;
-    this.aimLeft = false;
-    this.aimRight = false;
-    this.powerUp = false;
-    this.powerDown = false;
+    this.bindKeyPresses();
 
     this.paint();
     this.loop();
@@ -234,13 +233,17 @@ var World = function () {
     key: 'nextTurn',
     value: function nextTurn() {
       this.tank = (this.tank + 1) % this.numTanks;
-      if (this.tanks[this.tank].health <= 0) this.nextTurn();
-      this.transitionSize = this.minTransitionSize;
-      this.transition = true;
+      if (this.tanks[this.tank].health <= 0) {
+        this.nextTurn();
+      } else {
+        this.transitionSize = this.minTransitionSize;
+        this.transition = true;
+      }
     }
   }, {
     key: 'fireBullet',
     value: function fireBullet() {
+      if (this.firing) return;
       this.bullet = this.tanks[this.tank].fire();
       this.firing = true;
     }
@@ -282,36 +285,14 @@ var World = function () {
     value: function move() {
       if (this.transition) {
         this.paint();
-      } else if (this.spaceKey || this.firing) {
-        if (!this.firing) {
-          this.fireBullet();
-        } else {
-          this.bulletPhysics();
-        }
+      } else if (this.firing) {
+        this.bulletPhysics();
       } else {
-        if (this.aimLeft) this.tanks[this.tank].aim("left");
-        if (this.aimRight) this.tanks[this.tank].aim("right");
-        if (this.leftKey) this.tanks[this.tank].move("left")(this.level);
-        if (this.rightKey) this.tanks[this.tank].move("right")(this.level);
-        if (this.powerUp) this.tanks[this.tank].changePower("up")();
-        if (this.powerDown) this.tanks[this.tank].changePower("down")();
+        this.players[this.tank].move(this.level);
       }
 
       for (var t = 0; t < this.numTanks; t++) {
-        this.tanks[t].speed++;
-        if (this.tanks[t].speed > 0) {
-          for (var i = 0; i < this.tanks[t].speed; i++) {
-            if (!this.tanks[t].out && !this.level.collision(this.tanks[t].hitbox(0, 10, 30, 1))) {
-              this.tanks[t].y += 1;
-            } else {
-              this.tanks[t].speed = 0;
-            }
-          }
-          if (this.outOfBounds(this.tanks[t].x, this.tanks[t].y)) {
-            this.tanks[t].kill();
-            this.nextTurn();
-          }
-        }
+        this.players[t].physics(this.level);
       }
       this.paint();
     }
@@ -381,6 +362,19 @@ var World = function () {
         if (key === 87) _this2.powerUp = down;
         if (key === 83) _this2.powerDown = down;
       };
+    }
+  }, {
+    key: 'bindKeyPresses',
+    value: function bindKeyPresses() {
+      this.leftKey = false;
+      this.rightKey = false;
+      this.spaceKey = false;
+      this.aimRight = false;
+      this.powerUp = false;
+      this.powerDown = false;
+
+      document.onkeydown = this.keyChange(true);
+      document.onkeyup = this.keyChange(false);
     }
   }]);
 
@@ -470,6 +464,71 @@ exports.default = Level;
 
 /***/ }),
 /* 3 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var Player = function () {
+  function Player(tank, fireBullet, world) {
+    var ai = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : false;
+
+    _classCallCheck(this, Player);
+
+    this.tank = tank;
+    this.fireBullet = fireBullet;
+    this.world = world;
+    this.ai = ai;
+  }
+
+  _createClass(Player, [{
+    key: "move",
+    value: function move(level) {
+      if (this.ai) {} else {
+        if (this.world.aimLeft) this.tank.aim("left");
+        if (this.world.aimRight) this.tank.aim("right");
+        if (this.world.leftKey) this.tank.move("left")(level);
+        if (this.world.rightKey) this.tank.move("right")(level);
+        if (this.world.powerUp) this.tank.changePower("up")();
+        if (this.world.powerDown) this.tank.changePower("down")();
+        if (this.world.spaceKey) this.fireBullet();
+      }
+    }
+  }, {
+    key: "physics",
+    value: function physics(level) {
+      this.tank.speed++;
+      if (this.tank.speed > 0) {
+        for (var i = 0; i < this.tank.speed; i++) {
+          if (!this.tank.out && !level.collision(this.tank.hitbox(0, 10, 30, 1))) {
+            this.tank.y += 1;
+          } else {
+            this.tank.speed = 0;
+          }
+        }
+        if (this.world.outOfBounds(this.tank.x, this.tank.y) && this.tank.alive()) {
+          this.tank.kill();
+          this.world.nextTurn();
+        }
+      }
+    }
+  }]);
+
+  return Player;
+}();
+
+exports.default = Player;
+
+/***/ }),
+/* 4 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -690,6 +749,11 @@ var Tank = function () {
       // Fuel and Power
       this.drawStats(context, offset);
     }
+  }, {
+    key: "alive",
+    value: function alive() {
+      return this.health > 0;
+    }
   }]);
 
   return Tank;
@@ -698,7 +762,7 @@ var Tank = function () {
 exports.default = Tank;
 
 /***/ }),
-/* 4 */
+/* 5 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
