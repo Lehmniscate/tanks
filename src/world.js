@@ -27,10 +27,16 @@ export default class World {
     this.tanks = {};
     let spacing = this.width / (this.numTanks );
     
+    let playerAIs = [
+      false,
+      true,
+      true,
+      true
+    ];
     this.players = {};
     for(let i = 0; i < this.numTanks; i++) {
       this.tanks[i] = new Tank((i * spacing) + (spacing / 2) - 30, 0, this.tankColors[i], canvas);
-      this.players[i] = new Player(this.tanks[i], this.fireBullet.bind(this), this);
+      this.players[i] = new Player(this.tanks[i], this.fireBullet.bind(this), this, playerAIs[i]);
     }
     this.tank = 0;
 

@@ -10,39 +10,43 @@ export default class Player {
 
   move(level) {
     if(this.ai) {
-      if (this.motion) {
+      if (this.moving) {
+        console.log(this.aiming, this.moving, this.powering);
         if (this.aiming < 0) {
           this.tank.aim("left");
-          this.aiming += 1;
+          this.aiming++;
         } else if (this.aiming > 0) {
           this.tank.aim("right");
-          this.aiming -= 1;
+          this.aiming--;
         }
         if (this.moving < 0) {
           this.tank.move("left")(level);
-          this.moving += 1;
+          this.moving++;
         } else if (this.moving > 0) {
           this.tank.move("right")(level);
-          this.moving -= 1;
+          this.moving--;
         }
         if (this.powering < 0) {
           this.tank.changePower("up")();
-          this.powering += 1;
+          this.powering++;
         } else if (this.powering > 0) {
           this.tank.changePower("down")();
-          this.powering -= 1;
+          this.powering--;
         }
+        console.log(this.aiming, this.moving, this.powering);
         if (this.powering === 0 && this.moving === 0 && this.aiming === 0) {
+          console.log("hi");
           this.fireBullet();
-          this.motion = false;
+          this.moving = false;
           this.waiting = 50;
         }
       } else {
         if(this.waiting === 0) {
-          this.motion = true
+          this.moving = true;
           this.aiming = Math.floor(Math.random() * 500 - 250);
           this.moving = Math.floor(Math.random() * 50 - 25);
           this.powering = Math.floor(Math.random() * 10 - 5);
+          console.log(this.moving, this.aiming, this.powering);
         } else {
           this.waiting--;
         }
