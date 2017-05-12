@@ -5,7 +5,9 @@ let newGame = () => {
   let canvas = document.getElementById("canvas");
   canvas.width = Math.floor(canvasContainer.offsetWidth);
   canvas.height = Math.floor(canvasContainer.offsetHeight);
-  let world = new World(canvas);
+
+  let numPlayers = parseInt(document.getElementById("number-of-players-selector").value);
+  let world = new World(canvas, numPlayers);
 }
 
 window.addEventListener("load", () => {

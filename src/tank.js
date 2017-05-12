@@ -1,7 +1,7 @@
 export default class Tank {
   constructor(x, y, color, canvas) {
     this.cannonAngle = 0;
-    this.angle = 0;
+    this.angle = 90;
     this.color = color || "rgba(50,100,150,255)";
     this.x = x;
     this.y = y;

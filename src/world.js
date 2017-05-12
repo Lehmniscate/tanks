@@ -4,7 +4,7 @@ import Bitmap from './bitmap';
 import Player from './player';
 
 export default class World {
-  constructor(canvas) {
+  constructor(canvas, numPlayers = 1) {
     this.ctx = canvas.getContext("2d");
     this.width = canvas.width;
     this.height = canvas.height;
@@ -33,6 +33,11 @@ export default class World {
       true,
       true
     ];
+
+    for(let i = 0; i < numPlayers; i++) {
+      playerAIs[i] = false;
+    }
+
     this.players = {};
     for(let i = 0; i < this.numTanks; i++) {
       this.tanks[i] = new Tank((i * spacing) + (spacing / 2) - 30, 0, this.tankColors[i], canvas);

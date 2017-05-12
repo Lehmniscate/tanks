@@ -113,7 +113,7 @@ body {
   background-color: #FFF;
   padding: 5px 10px;
   border-radius: 5px;
-  margin-right: 10px;
+  margin-left: 10px;
   width: 90px;
   text-align: center;
   color: #222;
@@ -125,4 +125,10 @@ body {
 
 .fa:hover {
   color: purple;
+}
+
+#number-ofplayers {
+  display: flex;
+  flex-direction: row;
+  align-content: center;
 }

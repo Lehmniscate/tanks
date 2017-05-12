@@ -187,6 +187,8 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 var World = function () {
   function World(canvas) {
+    var numPlayers = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 1;
+
     _classCallCheck(this, World);
 
     this.ctx = canvas.getContext("2d");
@@ -206,10 +208,16 @@ var World = function () {
     this.tanks = {};
     var spacing = this.width / this.numTanks;
 
+    var playerAIs = [false, true, true, true];
+
+    for (var i = 0; i < numPlayers; i++) {
+      playerAIs[i] = false;
+    }
+
     this.players = {};
-    for (var i = 0; i < this.numTanks; i++) {
-      this.tanks[i] = new _tank2.default(i * spacing + spacing / 2 - 30, 0, this.tankColors[i], canvas);
-      this.players[i] = new _player2.default(this.tanks[i], this.fireBullet.bind(this), this);
+    for (var _i = 0; _i < this.numTanks; _i++) {
+      this.tanks[_i] = new _tank2.default(_i * spacing + spacing / 2 - 30, 0, this.tankColors[_i], canvas);
+      this.players[_i] = new _player2.default(this.tanks[_i], this.fireBullet.bind(this), this, playerAIs[_i]);
     }
     this.tank = 0;
 
@@ -262,8 +270,8 @@ var World = function () {
 
         if (this.level.collision({ grid: grid })) {
           this.level.explosion(this.bullet.x, this.bullet.y, this.bullet.radius);
-          for (var _i = 0; _i < this.numTanks; _i++) {
-            this.tanks[_i].explosion(this.bullet.x, this.bullet.y, this.bullet.radius);
+          for (var _i2 = 0; _i2 < this.numTanks; _i2++) {
+            this.tanks[_i2].explosion(this.bullet.x, this.bullet.y, this.bullet.radius);
           }
           this.firing = false;
           this.nextTurn();
@@ -487,12 +495,52 @@ var Player = function () {
     this.fireBullet = fireBullet;
     this.world = world;
     this.ai = ai;
+    this.moving = false;
+    this.waiting = 50;
   }
 
   _createClass(Player, [{
     key: "move",
     value: function move(level) {
-      if (this.ai) {} else {
+      if (this.ai) {
+        if (this.motion) {
+          if (this.aiming < 0) {
+            this.tank.aim("left");
+            this.aiming += 1;
+          } else if (this.aiming > 0) {
+            this.tank.aim("right");
+            this.aiming -= 1;
+          }
+          if (this.moving < 0) {
+            this.tank.move("left")(level);
+            this.moving += 1;
+          } else if (this.moving > 0) {
+            this.tank.move("right")(level);
+            this.moving -= 1;
+          }
+          if (this.powering < 0) {
+            this.tank.changePower("up")();
+            this.powering += 1;
+          } else if (this.powering > 0) {
+            this.tank.changePower("down")();
+            this.powering -= 1;
+          }
+          if (this.powering === 0 && this.moving === 0 && this.aiming === 0) {
+            this.fireBullet();
+            this.motion = false;
+            this.waiting = 50;
+          }
+        } else {
+          if (this.waiting === 0) {
+            this.motion = true;
+            this.aiming = Math.floor(Math.random() * 500 - 250);
+            this.moving = Math.floor(Math.random() * 50 - 25);
+            this.powering = Math.floor(Math.random() * 10 - 5);
+          } else {
+            this.waiting--;
+          }
+        }
+      } else {
         if (this.world.aimLeft) this.tank.aim("left");
         if (this.world.aimRight) this.tank.aim("right");
         if (this.world.leftKey) this.tank.move("left")(level);
@@ -547,7 +595,7 @@ var Tank = function () {
     _classCallCheck(this, Tank);
 
     this.cannonAngle = 0;
-    this.angle = 0;
+    this.angle = 90;
     this.color = color || "rgba(50,100,150,255)";
     this.x = x;
     this.y = y;
@@ -779,7 +827,9 @@ var newGame = function newGame() {
   var canvas = document.getElementById("canvas");
   canvas.width = Math.floor(canvasContainer.offsetWidth);
   canvas.height = Math.floor(canvasContainer.offsetHeight);
-  var world = new _world2.default(canvas);
+
+  var numPlayers = parseInt(document.getElementById("number-of-players-selector").value);
+  var world = new _world2.default(canvas, numPlayers);
 };
 
 window.addEventListener("load", function () {
